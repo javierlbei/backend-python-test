@@ -1,6 +1,7 @@
 # db models
-from .constants import RequestType, RequestStatus
 from dataclasses import dataclass
+
+from requests.constants import RequestType, RequestStatus
 
 @dataclass
 class Request:

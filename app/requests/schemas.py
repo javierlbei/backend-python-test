@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+
 from .constants import RequestType, RequestStatus
 
 class CreateRequestBody(BaseModel):

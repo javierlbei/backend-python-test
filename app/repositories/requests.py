@@ -1,8 +1,9 @@
 # db models
-from requests.models import Request
 from typing import Dict
 from uuid import uuid4
-from .exceptions import RequestRepositorySaveException
+
+from repositories.exceptions import RequestRepositorySaveException
+from requests.models import Request
 
 class RequestRepository:
 
@@ -15,8 +16,7 @@ class RequestRepository:
         while max_retries < 10:
             generated_id = uuid4().hex
 
-            if self._data.get(generated_id) is None:
-                return generated_id
+            if self._data.get(generated_id) is None: return generated_id
             
             max_retries += 1
         
