@@ -1,4 +1,3 @@
-# constants and error codes
 from enum import Enum
 
 class RequestType(str, Enum):

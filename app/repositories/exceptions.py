@@ -1,2 +1,2 @@
 class RequestRepositorySaveException(Exception):
-    """ Raised if the repository could not store a request """
+    """The repository could not find an available ID"""
