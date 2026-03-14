@@ -1,8 +1,18 @@
-from fastapi import HTTPException, status
+from fastapi import Depends, HTTPException, status, Request
 
-from requests.utils import request_service
+from concurrency.service import ConcurrencyService
+from requests.service import RequestService
 
-async def existant_request_id(request_id):
+async def get_concurrency_service(request: Request) -> ConcurrencyService:
+    return request.app.state.concurrency_service
+
+async def get_request_service(request: Request) -> RequestService:
+    return request.app.state.request_service
+
+async def existant_request_id(
+    request_id,
+    request_service=Depends(get_request_service)
+):
     """ Checks the existence of a request.
 
     Calls the service methods including the business logic for request

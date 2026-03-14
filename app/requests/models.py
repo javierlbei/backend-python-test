@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from requests.constants import RequestType, RequestStatus
 
 @dataclass
-class Request:
+class NotificationRequest:
     """A notification request
 
     Attributes:

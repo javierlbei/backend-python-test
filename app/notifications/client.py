@@ -1,10 +1,10 @@
-from fastapi import status
+from fastapi import Depends, status
 from httpx import AsyncClient
 
 from notifications.config import NotificationClientConfig
 from requests.constants import RequestStatus
-from requests.models import Request
-from requests.utils import request_service
+from requests.models import NotificationRequest
+from requests.service import RequestService
 
 class NotificationClient:
     """Client to send notifications.
@@ -19,7 +19,11 @@ class NotificationClient:
             failed.
     """
 
-    def __init__(self, client_settings: NotificationClientConfig):
+    def __init__(
+        self,
+        client_settings: NotificationClientConfig,
+        request_service: RequestService
+    ):
         """Initializes the instance based on configuration
 
         Args:
@@ -28,8 +32,15 @@ class NotificationClient:
         self._client = AsyncClient(base_url=client_settings.BASE_URL,
                                     headers=client_settings.AUTH_HEADER)
         self._MAX_RETIES = client_settings.MAX_RETRIES
+        self._request_service = request_service
 
-    async def send_notification(self, request: Request):
+    async def close(self):
+        await self._client.aclose()
+
+    async def send_notification(
+        self,
+        request: NotificationRequest
+    ):
         """ Sends the notification request to the provider.
 
         Sends the notification request to the provider and updates the request
@@ -45,7 +56,7 @@ class NotificationClient:
             This method raises no exceptions
         """
         request.status = RequestStatus.PROCESSING
-        request_service.save_request(request)
+        await self._request_service.save_request(request)
         
         response = await self._client.post(
             "/v1/notify",
@@ -60,5 +71,5 @@ class NotificationClient:
             request.status = RequestStatus.SENT
         else:
             request.status = RequestStatus.FAILED
-
-        request_service.save_request(request)
+        
+        await self._request_service.save_request(request)

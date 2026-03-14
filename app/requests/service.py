@@ -1,5 +1,5 @@
 from requests.exceptions import RequestServiceSaveException
-from requests.models import Request
+from requests.models import NotificationRequest
 from requests.schemas import CreateRequestBody
 from repositories.exceptions import RequestRepositorySaveException
 from repositories.requests import RequestRepository
@@ -21,7 +21,7 @@ class RequestService:
                 The notification request to process. Class may vary:
                     - CreateRequestBody
                         Used by router module to create a new request
-                    - Request:
+                    - NotificationRequest:
                         Used by client module (inside package notifications) to
                         update the request
 
@@ -34,12 +34,12 @@ class RequestService:
             unique ID for the new request
         """
         if isinstance(request, CreateRequestBody):
-            request_to_save = Request(
+            request_to_save = NotificationRequest(
                 to=request.to,
                 message=request.message,
                 type=request.type
             )
-        elif isinstance(request, Request):
+        elif isinstance(request, NotificationRequest):
             request_to_save = request
 
         try:

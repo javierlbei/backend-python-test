@@ -1,25 +1,24 @@
-from fastapi import APIRouter, HTTPException, status, Depends, Response
+from fastapi import APIRouter, HTTPException, status, Depends, Response, Request
 
+from concurrency.exceptions import QueueFullException
+from concurrency.service import ConcurrencyService
 from notifications.client import NotificationClient
 from notifications.config import NotificationClientConfig
+from notifications.service import NotificationService
 from requests.constants import RequestStatus
-from requests.dependencies import existant_request_id
+from requests.dependencies import existant_request_id, get_concurrency_service, get_request_service
 from requests.exceptions import RequestServiceSaveException
 from requests.service import RequestService
 from requests.schemas import CreateRequestBody, CreateRequestResponse, GetRequestResponse
-from requests.utils import request_service
 
 router = APIRouter(prefix='/v1/requests')
-notification_client_config = NotificationClientConfig(
-    base_url='http://localhost:3001',
-    auth_header={'X-API-Key': 'test-dev-2026'},
-    max_retries=3
-)
-notification_client = NotificationClient(notification_client_config)
 
-@router.post('/', status_code=status.HTTP_201_CREATED,
+@router.post('', status_code=status.HTTP_201_CREATED,
             response_model=CreateRequestResponse)
-async def save_request(request: CreateRequestBody):
+async def save_request(
+    request: CreateRequestBody,
+    request_service=Depends(get_request_service)
+):
     """ Handler for request creation endpoint
 
     Calls the service methods that include the business logic for 
@@ -41,13 +40,16 @@ async def save_request(request: CreateRequestBody):
         return CreateRequestResponse(id = created_request_id)
     except RequestServiceSaveException:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=('The service could not save the request. '
                     'Please try again later.')
         )
 
 @router.post('/{request_id}/process', status_code=status.HTTP_202_ACCEPTED)
-async def process_request(request=Depends(existant_request_id)):
+async def process_request(
+    request=Depends(existant_request_id),
+    concurrency_service=Depends(get_concurrency_service)
+):
     """ Handler for request processing endpoint
 
     For queued requests, calls the notification client for their processing.
@@ -73,8 +75,14 @@ async def process_request(request=Depends(existant_request_id)):
     if (request.status == RequestStatus.PROCESSING):
         return Response(status_code=status.HTTP_202_ACCEPTED)
 
-    await notification_client.send_notification(request)
-    return Response(status_code=status.HTTP_202_ACCEPTED)
+    try:
+        await concurrency_service.add_to_queue(request)
+        return Response(status_code=status.HTTP_202_ACCEPTED)
+    except QueueFullException:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=('You are being rate-limited. Please try again later.')
+        )
     
 
 @router.get('/{request_id}', status_code=status.HTTP_200_OK,

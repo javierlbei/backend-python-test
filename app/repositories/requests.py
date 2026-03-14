@@ -2,7 +2,7 @@ from typing import Dict
 from uuid import uuid4
 
 from repositories.exceptions import RequestRepositorySaveException
-from requests.models import Request
+from requests.models import NotificationRequest
 
 class RequestRepository:
     """Performs operations in the database.
@@ -15,7 +15,7 @@ class RequestRepository:
     def __init__(self):
         """Initializes the database"""
 
-        self._data: Dict[str, Request] = {}
+        self._data: Dict[str, NotificationRequest] = {}
 
     async def _generate_id(self):
         """ Generates a non-existant UUID
@@ -32,14 +32,14 @@ class RequestRepository:
         while max_retries < 10:
             generated_id = uuid4().hex
 
-            if self._data.get(generated_id) is None: return generated_id
+            if generated_id not in self._data: return generated_id
             
             max_retries += 1
         
         raise RequestRepositorySaveException
         
 
-    async def save(self, request: Request):
+    async def save(self, request: NotificationRequest):
         """ Saves the request in database.
 
         If the provided request has no ID set, this will be saved as a new entry
@@ -68,7 +68,7 @@ class RequestRepository:
             request_id: String containing the ID of the request to retrieve.
 
         Returns:
-            If a request with the provided ID exists on database, a Request
+            If a request with the provided ID exists on database, a NotificationRequest
             object will be returned.
 
             If it does not exist, None will be returned.
