@@ -58,18 +58,20 @@ class NotificationClient:
         request.status = RequestStatus.PROCESSING
         await self._request_service.save_request(request)
         
-        response = await self._client.post(
-            "/v1/notify",
-            json={
-                'to': request.to,
-                'message': request.message,
-                'type': request.type
-            }
-        )
+        for _ in range(self._MAX_RETIES):
+            response = await self._client.post(
+                "/v1/notify",
+                json={
+                    'to': request.to,
+                    'message': request.message,
+                    'type': request.type
+                }
+            )
 
-        if (response.status_code == status.HTTP_200_OK):
-            request.status = RequestStatus.SENT
-        else:
-            request.status = RequestStatus.FAILED
+            if (response.status_code == status.HTTP_200_OK):
+                request.status = RequestStatus.SENT
+                break
+            else:
+                request.status = RequestStatus.FAILED
         
         await self._request_service.save_request(request)
