@@ -1,3 +1,6 @@
+"""In-memory repository for request persistence."""
+
+import logging
 from typing import Dict
 from uuid import uuid4
 
@@ -5,72 +8,82 @@ from repositories.exceptions import RequestRepositorySaveException
 from requests.models import NotificationRequest
 
 class RequestRepository:
-    """Performs operations in the database.
+    """Performs persistence operations for user requests.
 
     Attributes:
-        _data
-            An in-memory database for demonstration purposes
+        _data (Dict[str, NotificationRequest]): In-memory request store keyed by ID.
     """
 
     def __init__(self):
-        """Initializes the database"""
+        """Initializes the in-memory request store."""
 
         self._data: Dict[str, NotificationRequest] = {}
+        self._logger = logging.getLogger('uvicorn.error')
 
-    async def _generate_id(self):
-        """ Generates a non-existant UUID
+    async def _generate_id(self) -> str:
+        """Generates a unique request ID.
 
         Returns:
-            A string containing the generated UUID
+            str: Generated UUID in hexadecimal format.
 
         Raises:
-            RequestRepositorySaveException: The program could not generate
-            a unique ID in the maximum attempts range.
+            RequestRepositorySaveException: If a unique ID is not generated
+                after the maximum number of attempts.
         """
+
         max_retries = 0
 
         while max_retries < 10:
             generated_id = uuid4().hex
 
-            if generated_id not in self._data: return generated_id
-            
+            if generated_id not in self._data:
+                return generated_id
+
             max_retries += 1
-        
-        raise RequestRepositorySaveException
-        
 
-    async def save(self, request: NotificationRequest):
-        """ Saves the request in database.
+        self._logger.error('Could not generate unique request ID after 10 attempts')
+        raise RequestRepositorySaveException()
 
-        If the provided request has no ID set, this will be saved as a new entry
-        on the database. If provided, an update operation will be performed.
+    async def save(self, request: NotificationRequest) -> str:
+        """Saves or updates a request in the repository.
+
+        If the request has no ID, a new unique ID is generated and assigned.
+        Otherwise, the existing request is updated.
 
         Args:
-            request: The notification request to save
+            request (NotificationRequest): Request to create or update.
 
         Returns:
-            A string containing the ID of the saved request
+            str: ID of the persisted request.
         """
+
         if request.id is None:
             generated_id = await self._generate_id()
             request.id = generated_id
+            self._logger.info('Generated request ID: %s', request.id)
 
         self._data[request.id] = request
+        self._logger.debug('Saved request with ID: %s', request.id)
 
         return request.id
-        
 
 
-    async def get_request_by_id(self, request_id):
-        """ Gets a request in database.
+
+    async def get_request_by_id(self, request_id: str) -> NotificationRequest | None:
+        """Retrieves a request by ID.
 
         Args:
-            request_id: String containing the ID of the request to retrieve.
+            request_id (str): Request identifier.
 
         Returns:
-            If a request with the provided ID exists on database, a NotificationRequest
-            object will be returned.
-
-            If it does not exist, None will be returned.
+            NotificationRequest | None: Stored request when found, otherwise ``None``.
         """
-        return self._data.get(request_id)
+
+        request = self._data.get(request_id)
+
+        if request is None:
+            self._logger.debug('Request with ID %s not found', request_id)
+        else:
+            self._logger.debug('Request with ID %s retrieved', request_id)
+
+        return request

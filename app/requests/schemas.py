@@ -1,3 +1,5 @@
+"""Pydantic schemas for request API inputs and outputs."""
+
 import re
 from typing_extensions import Self
 
@@ -19,19 +21,32 @@ class CreateRequestBody(BaseModel):
     type: RequestType
 
     @model_validator(mode='after')
-    def check_valid_recipient(self) -> Self:        
+    def check_valid_recipient(self) -> Self:
+        """Validates recipient format based on notification type.
+
+        Email and push notifications require an email-like recipient value.
+        SMS notifications require an international phone number format.
+
+        Returns:
+            Self: The validated model instance.
+
+        Raises:
+            ValueError: If recipient format does not match the expected pattern
+                for the selected request type.
+        """
+
         recipient = self.to
         email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
         phone_pattern = r'^\+[1-9]\d{1,3}[-.\s]?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,9}$'
 
         match self.type:
             case RequestType.EMAIL | RequestType.PUSH:
-                if re.match(email_pattern, recipient) is not None: 
+                if re.match(email_pattern, recipient) is not None:
                     return self
                 else:
                     raise ValueError('Email format is incorrect')
             case RequestType.SMS:
-                if re.match(phone_pattern, recipient) is not None: 
+                if re.match(phone_pattern, recipient) is not None:
                     return self
                 else:
                     raise ValueError('Phone number format is incorrect')
@@ -52,6 +67,6 @@ class GetRequestResponse(BaseModel):
         id: A unique identifier for the request being queried.
         status: The current processing status of the request.
     """
-    
+
     id: str
     status: RequestStatus

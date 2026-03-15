@@ -1,2 +1,5 @@
+"""Custom exceptions for the concurrency package."""
+
+
 class QueueFullException(Exception):
-    """The concurrency queue is full"""
+    """Raised when a request cannot be enqueued because the queue is at capacity."""
