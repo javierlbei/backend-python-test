@@ -9,6 +9,7 @@ from concurrency.service import ConcurrencyService
 from notifications.client import NotificationClient
 from notifications.config import NotificationClientConfig
 from requests import router as requests_router
+from requests.dependencies import TimeoutMiddleware
 from requests.service import RequestService
 
 
@@ -55,3 +56,4 @@ app = FastAPI(
     lifespan=lifespan,
 )
 app.include_router(requests_router.router)
+app.add_middleware(TimeoutMiddleware, threshold=10)
