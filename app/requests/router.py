@@ -6,11 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 
 from concurrency.exceptions import QueueFullException
 from requests.constants import RequestStatus
-from requests.dependencies import (
-    existant_request_id,
-    get_concurrency_service,
-    get_request_service,
-)
+from requests.dependencies import get_concurrency_service, get_request_service
 from requests.models import NotificationRequest
 from requests.exceptions import InvalidPayloadException, RequestServiceSaveException
 from requests.schemas import CreateRequestBody, CreateRequestResponse, GetRequestResponse
@@ -62,7 +58,8 @@ async def save_request(
 
 @router.post('/{request_id}/process', status_code=status.HTTP_202_ACCEPTED)
 async def process_request(
-    request: NotificationRequest = Depends(existant_request_id),
+    request_id: str,
+    request_service=Depends(get_request_service),
     concurrency_service=Depends(get_concurrency_service),
 ) -> Response:
     """Enqueues an existing request for asynchronous processing.
@@ -80,6 +77,15 @@ async def process_request(
         HTTPException: Raised with status 429 when the processing queue is
             full.
     """
+
+    request = await request_service.get_request(request_id)
+
+    if request is None:
+        _logger.warning('Request with ID %s was not found', request_id)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail='Request not found',
+        )
 
     if request.status == RequestStatus.SENT:
         _logger.info('Request %s already sent', request.id)
@@ -106,7 +112,10 @@ async def process_request(
     status_code=status.HTTP_200_OK,
     response_model=GetRequestResponse,
 )
-async def get_request(request: NotificationRequest = Depends(existant_request_id)) -> NotificationRequest:
+async def get_request(
+    request_id: str,
+    request_service=Depends(get_request_service),
+) -> NotificationRequest:
     """Retrieves a request by ID.
 
     Args:
@@ -115,6 +124,15 @@ async def get_request(request: NotificationRequest = Depends(existant_request_id
     Returns:
         NotificationRequest: Request entity serialized by the response model.
     """
+
+    request = await request_service.get_request(request_id)
+
+    if request is None:
+        _logger.warning('Request with ID %s was not found', request_id)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail='Request not found',
+        )
 
     _logger.debug('Returning request %s', request.id)
     return request
