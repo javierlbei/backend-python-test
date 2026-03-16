@@ -69,7 +69,7 @@ class RequestRepository:
             str: ID of the persisted request.
         """
 
-        await self._simulate_io_delay()
+        # await self._simulate_io_delay()
 
         if request.id is None:
             generated_id = await self._generate_id()
@@ -93,7 +93,7 @@ class RequestRepository:
             NotificationRequest | None: Stored request when found, otherwise ``None``.
         """
 
-        await self._simulate_io_delay()
+        #await self._simulate_io_delay()
 
         request = self._data.get(request_id)
 
