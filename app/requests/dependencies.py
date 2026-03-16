@@ -1,19 +1,9 @@
 """Dependency providers and validators for request routes."""
 
-import asyncio
-import logging
-import time
-
-from fastapi import Depends, FastAPI, HTTPException, Request, Response, status
-from fastapi.responses import JSONResponse
-from starlette.middleware.base import BaseHTTPMiddleware
+from fastapi import Request
 
 from concurrency.service import ConcurrencyService
-from requests.models import NotificationRequest
 from requests.service import RequestService
-
-
-_logger = logging.getLogger('uvicorn.error')
 
 
 async def get_concurrency_service(request: Request) -> ConcurrencyService:
