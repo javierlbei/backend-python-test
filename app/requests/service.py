@@ -5,6 +5,7 @@ import logging
 
 from cache import AsyncTTL
 
+from exceptions import GenericClientException
 from concurrency.service import ConcurrencyService
 from notifications.client import NotificationClient
 from notifications.exceptions import NotificationClientException
@@ -21,7 +22,7 @@ from repositories.requests import RequestRepository
 
 
 class RequestService:
-    """Coordinates persistence, prompt generation, and notification delivery.
+    """Coordinates persistence, payload generation, and notification delivery.
 
     Attributes:
         _concurrency_service (ConcurrencyService): Queue and task tracker.
@@ -97,6 +98,8 @@ class RequestService:
     async def get_request(self, request_id: str) -> NotificationRequest | None:
         """Retrieves a request by ID.
 
+        Results are cached for 600 seconds (TTL) to reduce repeated lookups.
+
         Args:
             request_id (str): Request identifier.
 
@@ -148,16 +151,22 @@ class RequestService:
 
                     await self._notification_client.send_notification(payload)
 
-                    self._logger.info('Notification sent for request with '
-                                      'ID: %s', request.id)
+                    self._logger.info(
+                        'Notification sent for request with ID: %s',
+                        request.id
+                    )
+
                     request.status = RequestStatus.SENT
-                except NotificationClientException:
-                    self._logger.info('Notification sending failed for request with '
-                                      'ID: %s', request.id)
+                except GenericClientException:
+                    self._logger.info(
+                        'Notification sending failed for request with ID: %s',
+                        request.id
+                    )
                     request.status = RequestStatus.FAILED
                 except Exception:
                     self._logger.error(
-                        'Unhandled exception while processing request with ID: %s',
+                        ('Unhandled exception while processing request with '
+                            'ID: %s'),
                         request.id,
                         exc_info=True,
                     )
@@ -167,7 +176,8 @@ class RequestService:
                         await self._requests_repository.save(request)
                     except RequestRepositorySaveException:
                         self._logger.error(
-                            'Could not persist final status for request with ID: %s',
+                            ('Could not persist final status for request with '
+                                'ID: %s'),
                             request.id,
                             exc_info=True,
                         )

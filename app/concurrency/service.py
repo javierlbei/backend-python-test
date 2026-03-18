@@ -23,6 +23,7 @@ class ConcurrencyService:
             the enqueued-request set and performing queue operations.
         _enqueued_requests (set[str]): IDs of requests currently in the queue,
             used to prevent duplicate submissions.
+        _logger (logging.Logger): Logger instance for observability.
     """
 
     def __init__(self, queue_size: int = 0):

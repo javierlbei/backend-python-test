@@ -30,13 +30,16 @@ async def save_request(
 
     Args:
         request (CreateRequestBody): Payload containing user input.
-        request_service (RequestService): Service used for persistence.
+        request_service (RequestService): Injected service used for
+            persistence.
 
     Returns:
         CreateRequestResponse: Response containing the created request ID.
 
     Raises:
         HTTPException: Raised with status 500 when request persistence fails.
+        HTTPException: Raised with status 400 when the request payload is
+            invalid.
     """
 
     try:
@@ -44,17 +47,17 @@ async def save_request(
         created_request_id = await request_service.save_request(request)
 
         return CreateRequestResponse(id=created_request_id)
-    except RequestServiceSaveException:
+    except RequestServiceSaveException as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=('The service could not save the request. '
                     'Please try again later.')
-        )
-    except InvalidPayloadException:
+        ) from exc
+    except InvalidPayloadException as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=('Invalid request payload. Please ensure the input is valid.')
-        )
+        ) from exc
 
 @router.post('/{request_id}/process', status_code=status.HTTP_202_ACCEPTED)
 async def process_request(
@@ -65,15 +68,18 @@ async def process_request(
     """Enqueues an existing request for asynchronous processing.
 
     Args:
-        request (NotificationRequest): Existing request resolved by dependency.
-        concurrency_service (ConcurrencyService): Queue manager for background
-            processing.
+        request_id (str): ID of the request to process.
+        request_service (RequestService): Injected service used to retrieve
+            the request.
+        concurrency_service (ConcurrencyService): Injected queue manager for
+            background processing.
 
     Returns:
-        Response: Empty response with status code 200 or 202 depending on the
-            request state.
+        Response: Empty response with status 200 if already sent, or 202 if
+            accepted for processing.
 
     Raises:
+        HTTPException: Raised with status 404 when the request is not found.
         HTTPException: Raised with status 429 when the processing queue is
             full.
     """
@@ -99,12 +105,12 @@ async def process_request(
         _logger.info('Queueing request %s for processing', request.id)
         await concurrency_service.add_to_queue(request)
         return Response(status_code=status.HTTP_202_ACCEPTED)
-    except QueueFullException:
+    except QueueFullException as exc:
         _logger.warning('Queue full while processing request %s', request.id)
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail=('You are being rate-limited. Please try again later.')
-        )
+        ) from exc
 
 
 @router.get(
@@ -119,10 +125,15 @@ async def get_request(
     """Retrieves a request by ID.
 
     Args:
-        request (NotificationRequest): Existing request resolved by dependency.
+        request_id (str): ID of the request to retrieve.
+        request_service (RequestService): Injected service used to look up
+            the request.
 
     Returns:
         NotificationRequest: Request entity serialized by the response model.
+
+    Raises:
+        HTTPException: Raised with status 404 when the request is not found.
     """
 
     request = await request_service.get_request(request_id)

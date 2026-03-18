@@ -14,6 +14,7 @@ class RequestRepository:
 
     Attributes:
         _data (Dict[str, NotificationRequest]): In-memory request store keyed by ID.
+        _logger (logging.Logger): Logger instance for observability.
     """
 
     def __init__(self):
@@ -25,8 +26,8 @@ class RequestRepository:
     async def _simulate_io_delay(self):
         """Simulates I/O delay for repository operations with a random spread."""
 
-        wait_seconds = 1
-        spread_seconds = 0.5
+        # wait_seconds = 1
+        # spread_seconds = 0.5
 
         total_wait = wait_seconds + random.uniform(0, spread_seconds)
 
@@ -53,7 +54,10 @@ class RequestRepository:
 
             max_retries += 1
 
-        self._logger.error('Could not generate unique request ID after 10 attempts')
+        self._logger.error(
+            'Could not generate unique request ID after 10 attempts'
+        )
+
         raise RequestRepositorySaveException()
 
     async def save(self, request: NotificationRequest) -> str:
@@ -83,14 +87,18 @@ class RequestRepository:
 
 
 
-    async def get_request_by_id(self, request_id: str) -> NotificationRequest | None:
+    async def get_request_by_id(
+        self,
+        request_id: str
+    ) -> NotificationRequest | None:
         """Retrieves a request by ID.
 
         Args:
             request_id (str): Request identifier.
 
         Returns:
-            NotificationRequest | None: Stored request when found, otherwise ``None``.
+            NotificationRequest | None: Stored request when found, otherwise
+            ``None``.
         """
 
         #await self._simulate_io_delay()
